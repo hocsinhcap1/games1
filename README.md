@@ -17,8 +17,14 @@ Chỉ giơ từ 1 đến 4 ngón; xòe cả 5 ngón là không hợp lệ (trò 
 - Nhận diện ngón tay bằng MediaPipe Hands, camera hiển thị trong ô tròn ở giữa màn hình
 - Có thể bấm vào đáp án hoặc nhấn phím 1-4 nếu không dùng camera
 
+## Kho câu hỏi
+- `ngan-hang-cau-hoi.js`: 1000 câu lớp 2, học kì 1 (CTGDPT 2018), gồm 500 Toán và 500 Tiếng Việt, chia 3 mức Biết, Hiểu, Vận dụng.
+- Toán: cộng, trừ có nhớ trong phạm vi 100. Tiếng Việt: từ chỉ sự vật, hoạt động, đặc điểm, điền khuyết chính tả, đặt câu.
+- Mỗi lượt chơi lấy ngẫu nhiên 10 câu. Thanh trượt chọn tỉ lệ Toán : Tiếng Việt, nút "10 câu khác" để bốc lại.
+- Nút "Câu tôi soạn" chuyển sang bộ câu hỏi giáo viên tự soạn.
+
 ## Chạy trên GitHub Pages
-1. Tạo repository mới và tải `index.html` cùng `README.md` lên.
+1. Tạo repository mới và tải cả 3 file `index.html`, `ngan-hang-cau-hoi.js`, `README.md` lên (hai file đầu phải cùng thư mục).
 2. Vào **Settings > Pages**, ở mục **Branch** chọn `main` và thư mục `/ (root)`, rồi bấm **Save**.
 3. Sau 1-2 phút, mở đường dẫn `https://<tên-tài-khoản>.github.io/<tên-repo>/`.
 

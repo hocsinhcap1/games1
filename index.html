@@ -60,6 +60,14 @@ body{font-family:'Baloo 2','Comic Sans MS',system-ui,sans-serif;color:var(--ink)
 .ans{min-height:76px;padding:8px 10px;gap:8px}.ans .L{width:44px;height:44px;font-size:26px}.ans .hand{display:none}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.top{position:relative;z-index:11;flex-wrap:wrap}
+.cfg{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;font-weight:800;font-size:16px}
+.cfg select{font:inherit;font-weight:700;border:0;border-radius:999px;padding:7px 12px;background:#fff;box-shadow:0 4px 0 rgba(0,0,0,.12)}
+.cfg .mixb{background:#fff;border-radius:999px;padding:5px 14px;display:flex;gap:8px;align-items:center;box-shadow:0 4px 0 rgba(0,0,0,.12)}
+.cfg input[type=range]{width:110px;accent-color:var(--accent)}
+.cfg .btn{font-size:16px;padding:7px 16px}
+#start{padding-top:150px}#start .card{max-height:calc(100vh - 170px)}
+#editor,#end{z-index:12}
 </style>
 </head>
 <body>
@@ -67,7 +75,10 @@ body{font-family:'Baloo 2','Comic Sans MS',system-ui,sans-serif;color:var(--ink)
 <div class="app">
   <div class="top">
     <div class="pill" id="prog">Câu 1/1</div>
-    <div class="row" style="margin:0">
+    <div class="cfg">
+      <select id="src"><option value="bank">📚 Kho 1000 câu</option><option value="my">📝 Câu tôi soạn</option></select>
+      <label class="mixb" id="mixwrap">Toán <input type="range" id="mix" min="0" max="10" value="5" aria-label="Tỉ lệ Toán và Tiếng Việt"> Tiếng Việt <span id="mixTxt"></span></label>
+      <button class="btn" id="btnMore">🔀 10 câu khác</button>
       <button class="btn ghost" id="btnEdit">✏️ Soạn câu hỏi</button>
     </div>
     <div class="pill" id="score">⭐ 0</div>
@@ -93,7 +104,7 @@ body{font-family:'Baloo 2','Comic Sans MS',system-ui,sans-serif;color:var(--ink)
 <div class="overlay on" id="start">
   <div class="card">
     <h1>🌈 Đố vui giơ ngón tay!</h1>
-    <p>Giơ tay trước camera để chọn đáp án và giữ yên một chút nhé.</p>
+    <p>Mỗi lượt gồm 10 câu Toán và Tiếng Việt lớp 2 chọn ngẫu nhiên. Giơ tay trước camera để chọn đáp án và giữ yên một chút nhé.</p>
     <div class="rules"><b>☝️ 1 = A</b><b>✌️ 2 = B</b><b>🤟 3 = C</b><b>🖐️ 4 = D</b></div>
     <p style="font-size:16px">Chỉ giơ từ 1 đến 4 ngón (xòe cả 5 ngón là không hợp lệ). Có thể bấm trực tiếp vào đáp án hoặc nhấn phím 1–4.</p>
     <div class="row"><button class="btn" id="btnGo" style="font-size:26px">▶ Bắt đầu</button><button class="btn ghost" id="btnNoCam">Chơi không camera</button></div>
@@ -123,6 +134,7 @@ body{font-family:'Baloo 2','Comic Sans MS',system-ui,sans-serif;color:var(--ink)
   </div>
 </div>
 
+<script src="ngan-hang-cau-hoi.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
 <script>
 const SAMPLE=[
@@ -143,7 +155,7 @@ const THEMES=[
 ];
 const $=id=>document.getElementById(id);
 const HOLD=1500, LET=['A','B','C','D'], HANDS=['☝️','✌️','🤟','🖐️'];
-let qs=load(), idx=0, score=0, locked=true, playing=false, camOn=false;
+let custom=load(), qs=[], nt=0, started=false, idx=0, score=0, locked=true, playing=false, camOn=false;
 function load(){try{const s=JSON.parse(localStorage.getItem('quizQs'));if(Array.isArray(s)&&s.length)return s}catch(e){}return JSON.parse(JSON.stringify(SAMPLE))}
 
 /* ---------- Hiển thị câu hỏi ---------- */
@@ -155,7 +167,7 @@ function show(){
   t.d.forEach((e,i)=>{const s=document.createElement('span');s.textContent=e;
     s.style.left=(i%2?78+(i*3)%15:2+(i*5)%12)+'%';s.style.top=(8+i*15)+'%';s.style.animationDelay=(i*.6)+'s';dc.appendChild(s)});
   $('qText').textContent=q.q;
-  $('prog').textContent='Câu '+(idx+1)+'/'+qs.length;
+  $('prog').textContent='Câu '+(idx+1)+'/'+qs.length+(q.mon?' · '+(q.mon==='t'?'Toán':'Tiếng Việt')+' · '+['Biết','Hiểu','Vận dụng'][q.lv-1]:'');
   $('score').textContent='⭐ '+score;
   $('fb').textContent='';
   ['colL','colR'].forEach(c=>$(c).innerHTML='');
@@ -178,7 +190,7 @@ function choose(k){
   $('score').textContent='⭐ '+score;
   $('fb').textContent=ok?'🎉 Giỏi quá! Đúng rồi!':'💪 Chưa đúng, đáp án là '+LET[q.c]+'. Cố lên!';
   speak(ok?'Giỏi quá':'Cố lên nhé');
-  setTimeout(next,2600);
+  nt=setTimeout(next,2600);
 }
 function next(){
   if(idx<qs.length-1){idx++;show();locked=false}
@@ -261,19 +273,39 @@ async function startCamera(){
 /* ---------- Điều khiển ---------- */
 function begin(withCam){
   $('start').classList.remove('on');$('end').classList.remove('on');
-  idx=0;score=0;playing=true;show();locked=false;
+  started=true;idx=0;score=0;playing=true;show();locked=false;
   if(withCam){ if(!camOn)startCamera(); }
   else if(!camOn)$('camMsg').textContent='Chế độ không camera: bấm vào đáp án';
 }
 $('btnGo').onclick=()=>begin(true);
 $('btnNoCam').onclick=()=>begin(false);
-$('btnAgain').onclick=()=>begin(true);
+$('btnAgain').onclick=()=>{qs=pick();begin(true)};
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;const k=+e.key;if(k>=1&&k<=4)choose(k-1)});
 
-/* ---------- Soạn câu hỏi ---------- */
+/* ---------- Kho câu hỏi: chọn ngẫu nhiên 10 câu theo tỉ lệ ---------- */
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(){
+  let list;
+  if($('src').value==='my'||!window.BANK) list=shuffle(custom.slice());
+  else{
+    const m=+$('mix').value,T=BANK.filter(x=>x.m==='t'),V=BANK.filter(x=>x.m==='v');
+    list=shuffle([...shuffle(T).slice(0,m),...shuffle(V).slice(0,10-m)]);
+  }
+  return list.map(x=>{const ix=x.m?shuffle(x.o.map((_,i)=>i)):x.o.map((_,i)=>i);
+    return{q:x.q,o:ix.map(i=>x.o[i]),c:ix.indexOf(x.c),mon:x.m,lv:x.l}});
+}
+function mixTxt(){const m=+$('mix').value;$('mixTxt').textContent=m+' : '+(10-m)}
+function reroll(){clearTimeout(nt);$('end').classList.remove('on');qs=pick();idx=0;score=0;playing=started;show()}
+function srcUi(){$('mixwrap').style.display=$('src').value==='my'?'none':'flex'}
+$('mix').oninput=mixTxt;$('mix').onchange=reroll;
+$('src').onchange=()=>{srcUi();reroll()};
+$('btnMore').onclick=reroll;
+if(!window.BANK){$('src').value='my';$('src').options[0].disabled=true}
+
+/* ---------- Soạn câu hỏi (giữ nguyên) ---------- */
 function renderEditor(){
   const box=$('qList');box.innerHTML='';
-  qs.forEach((q,i)=>{
+  custom.forEach((q,i)=>{
     const d=document.createElement('div');d.className='q';
     d.innerHTML='<div class="r"><b>Câu '+(i+1)+'</b><span style="flex:1"></span><button class="btn ghost" style="padding:2px 12px;font-size:15px">🗑 Xóa</button></div>'+
       '<input class="iq" placeholder="Nội dung câu hỏi"><div class="g"><input class="io" placeholder="Đáp án A"><input class="io" placeholder="Đáp án B"><input class="io" placeholder="Đáp án C"><input class="io" placeholder="Đáp án D"></div>'+
@@ -281,26 +313,26 @@ function renderEditor(){
     d.querySelector('.iq').value=q.q;
     d.querySelectorAll('.io').forEach((x,k)=>x.value=q.o[k]||'');
     d.querySelector('.ic').value=q.c;
-    d.querySelector('button').onclick=()=>{readEditor();qs.splice(i,1);renderEditor()};
+    d.querySelector('button').onclick=()=>{readEditor();custom.splice(i,1);renderEditor()};
     box.appendChild(d);
   });
 }
 function readEditor(){
-  qs=[...document.querySelectorAll('#qList .q')].map(d=>({q:d.querySelector('.iq').value.trim(),o:[...d.querySelectorAll('.io')].map(x=>x.value.trim()),c:+d.querySelector('.ic').value}));
+  custom=[...document.querySelectorAll('#qList .q')].map(d=>({q:d.querySelector('.iq').value.trim(),o:[...d.querySelectorAll('.io')].map(x=>x.value.trim()),c:+d.querySelector('.ic').value}));
 }
 $('btnEdit').onclick=()=>{renderEditor();$('editor').classList.add('on')};
-$('btnAdd').onclick=()=>{readEditor();qs.push({q:'',o:['','','',''],c:0});renderEditor()};
-$('btnReset').onclick=()=>{qs=JSON.parse(JSON.stringify(SAMPLE));renderEditor()};
-$('btnClose').onclick=()=>{qs=load();$('editor').classList.remove('on')};
+$('btnAdd').onclick=()=>{readEditor();custom.push({q:'',o:['','','',''],c:0});renderEditor()};
+$('btnReset').onclick=()=>{custom=JSON.parse(JSON.stringify(SAMPLE));renderEditor()};
+$('btnClose').onclick=()=>{custom=load();$('editor').classList.remove('on')};
 $('btnSave').onclick=()=>{
   readEditor();
-  qs=qs.filter(q=>q.q&&q.o.every(Boolean));
-  if(!qs.length){alert('Hãy nhập ít nhất 1 câu hỏi đầy đủ câu hỏi và 4 đáp án.');qs=load();return}
-  try{localStorage.setItem('quizQs',JSON.stringify(qs))}catch(e){}
+  custom=custom.filter(q=>q.q&&q.o.every(Boolean));
+  if(!custom.length){alert('Hãy nhập ít nhất 1 câu hỏi đầy đủ câu hỏi và 4 đáp án.');custom=load();return}
+  try{localStorage.setItem('quizQs',JSON.stringify(custom))}catch(e){}
   $('editor').classList.remove('on');
-  idx=0;score=0;show();locked=!playing;
+  if($('src').value==='my')reroll();
 };
-show();
+mixTxt();srcUi();qs=pick();show();
 </script>
 </body>
 </html>
