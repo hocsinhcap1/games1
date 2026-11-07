@@ -95,7 +95,7 @@ body{font-family:'Baloo 2','Comic Sans MS',system-ui,sans-serif;color:var(--ink)
     <h1>🌈 Đố vui giơ ngón tay!</h1>
     <p>Giơ tay trước camera để chọn đáp án và giữ yên một chút nhé.</p>
     <div class="rules"><b>☝️ 1 = A</b><b>✌️ 2 = B</b><b>🤟 3 = C</b><b>🖐️ 4 = D</b></div>
-    <p style="font-size:16px">Chỉ dùng 4 ngón (không tính ngón cái). Có thể bấm trực tiếp vào đáp án hoặc nhấn phím 1–4.</p>
+    <p style="font-size:16px">Chỉ giơ từ 1 đến 4 ngón (xòe cả 5 ngón là không hợp lệ). Có thể bấm trực tiếp vào đáp án hoặc nhấn phím 1–4.</p>
     <div class="row"><button class="btn" id="btnGo" style="font-size:26px">▶ Bắt đầu</button><button class="btn ghost" id="btnNoCam">Chơi không camera</button></div>
   </div>
 </div>
@@ -195,9 +195,21 @@ let cur=0, since=0;
 function resetHold(){cur=0;since=0;setRing(0);document.querySelectorAll('.ans').forEach(a=>a.classList.remove('hover'));$('badge').textContent='🖐️ Giơ 1–4 ngón'}
 function setRing(p){
   const L=2*Math.PI*162; $('fg').style.strokeDasharray=L; $('fg').style.strokeDashoffset=L*(1-p)}
+let badSince=0, lastWarn=0;
+const WARN='Không phù hợp, mời chọn lại đáp án';
 function onFingers(n){
   if(locked||!playing)return;
   const now=performance.now();
+  if(n===5){
+    resetHold();
+    $('badge').textContent='🖐️ 5 ngón: không hợp lệ';
+    if(!badSince)badSince=now;
+    if(now-badSince>700&&now-lastWarn>4000){
+      lastWarn=now;$('fb').textContent='🚫 '+WARN;speak(WARN);
+    }
+    return;
+  }
+  if(badSince){badSince=0;if($('fb').textContent.startsWith('🚫'))$('fb').textContent=''}
   if(n<1||n>4){resetHold();return}
   if(n!==cur){cur=n;since=now;document.querySelectorAll('.ans').forEach(a=>a.classList.remove('hover'));ansEl(n-1).classList.add('hover');
     $('badge').textContent=HANDS[n-1]+' Đáp án '+LET[n-1]}
@@ -211,6 +223,9 @@ function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
 function countFingers(lm){
   const tips=[8,12,16,20], pips=[6,10,14,18]; let n=0;
   tips.forEach((t,i)=>{ if(dist(lm[t],lm[0])>dist(lm[pips[i]],lm[0])*1.12) n++; });
+  // 4 ngón dài + ngón cái duỗi = 5 ngón (không hợp lệ)
+  const thumbOut=dist(lm[4],lm[5])>dist(lm[5],lm[17])*0.75;
+  if(n===4&&thumbOut)return 5;
   return n;
 }
 async function startCamera(){

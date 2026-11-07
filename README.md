@@ -9,7 +9,7 @@ Trò chơi trắc nghiệm cho học sinh tiểu học. Học sinh chọn đáp 
 | 3 | C |
 | 4 | D |
 
-Chỉ tính 4 ngón (không tính ngón cái). Giữ tay yên khoảng 1,5 giây để chốt đáp án.
+Chỉ giơ từ 1 đến 4 ngón; xòe cả 5 ngón là không hợp lệ (trò chơi sẽ đọc "Không phù hợp, mời chọn lại đáp án"). Giữ tay yên khoảng 1,5 giây để chốt đáp án.
 
 ## Tính năng
 - Giao diện đổi màu và hình trang trí theo từng câu hỏi
